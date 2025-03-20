@@ -1,0 +1,9 @@
+1. MENU
+  - sp_CreateMenu: tạo menu
+  - sp_UpdateMenu: cập nhật menu
+  - sp_DeleteMenu: xóa menu
+  - sp_GetMenuById: lấy menu theo id
+  - sp_GetAllMenus: lấy danh sách menu
+  - sp_GetListMenuOfShow: lấy danh sách menu hiển thị lên giao diện
+  - sp_GetMenusByParentId: lấy menu theo parentId(menu con)
+2. 
