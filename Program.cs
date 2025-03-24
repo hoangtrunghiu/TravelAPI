@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using TravelAPI.Data;
 using TravelAPI.Models;
 
@@ -10,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Cấu hình database
 builder.Services.AddDbContext<TravelDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("TravelContext") ?? throw new InvalidOperationException("Connection string 'InstituteOfFineArtsContext' not found.")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("TravelContext") ?? throw new InvalidOperationException("Connection string 'TravelDbContext' not found.")));
 
 // Add services to the container.
 //them cai nay
@@ -61,7 +62,13 @@ builder.Services.AddControllers()
 //end
 // Cấu hình Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "TravelAPI", Version = "v1" });
+
+    // Hỗ trợ upload file
+    options.OperationFilter<AddFileUploadFilter>();
+});
 
 // builder.Services.AddOpenApi();
 //Thêm service này để sử dụng StoredProcedureService lấy dữ liệu từ store procedure

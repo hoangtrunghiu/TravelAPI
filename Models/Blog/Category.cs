@@ -30,4 +30,22 @@ namespace TravelAPI.Models
         public virtual ICollection<Category> CategoryChildren { get; set; } = new List<Category>();
     }
 
+
+    //lấy thuộc tính cha của category cho breadcrumb
+    public class ParentCategoryDTO
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Slug { get; set; }
+    }
+
+    //lấy thuộc tính con của category
+    public class ChildCategoryDTO
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Slug { get; set; }
+    }
+
+
 }

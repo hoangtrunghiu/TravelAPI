@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TravelAPI.Data;
 
@@ -11,9 +12,11 @@ using TravelAPI.Data;
 namespace TravelAPI.Migrations
 {
     [DbContext(typeof(TravelDbContext))]
-    partial class TravelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250321081819_FileAndFolder")]
+    partial class FileAndFolder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -270,6 +273,7 @@ namespace TravelAPI.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ContentType")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -279,9 +283,11 @@ namespace TravelAPI.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Path")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("Size")
@@ -313,7 +319,12 @@ namespace TravelAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
 
                     b.ToTable("Folders");
                 });
@@ -423,6 +434,16 @@ namespace TravelAPI.Migrations
                     b.Navigation("Folder");
                 });
 
+            modelBuilder.Entity("TravelAPI.Models.Files.Folder", b =>
+                {
+                    b.HasOne("TravelAPI.Models.Files.Folder", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+                });
+
             modelBuilder.Entity("TravelAPI.Models.Category", b =>
                 {
                     b.Navigation("CategoryChildren");
@@ -430,6 +451,8 @@ namespace TravelAPI.Migrations
 
             modelBuilder.Entity("TravelAPI.Models.Files.Folder", b =>
                 {
+                    b.Navigation("Children");
+
                     b.Navigation("Files");
                 });
 #pragma warning restore 612, 618
