@@ -103,6 +103,60 @@ namespace TravelAPI.Controllers
             return CreatedAtAction(nameof(GetFile), new { id = fileEntity.Id }, fileEntity);
         }
 
+        [HttpPost("upload-editor")]
+        public async Task<IActionResult> UploadFileEditor([FromForm] UploadFileDto2 request)
+        {
+            try
+            {
+                if (request.Upload == null || request.Upload.Length == 0)
+                return BadRequest("File is empty");
+
+                if (request.Upload.Length > MaxFileSize)
+                    return BadRequest("File exceeds the maximum allowed size (50MB)");
+
+                // Tạo đường dẫn thư mục
+                string uniqueFileName = Path.GetFileNameWithoutExtension(request.Upload.FileName) + "_" + Guid.NewGuid().ToString("N").Substring(0, 6) + Path.GetExtension(request.Upload.FileName);
+                string uploadPath = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads");
+                Directory.CreateDirectory(uploadPath);
+                string filePath = Path.Combine(uploadPath, uniqueFileName);
+
+                // Lưu file vào thư mục
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.Upload.CopyToAsync(stream);
+                }
+
+                // Lưu thông tin vào database
+                var fileEntity = new FileEntity
+                {
+                    Name = uniqueFileName,
+                    ContentType = request.Upload.ContentType,
+                    Size = request.Upload.Length,
+                    Path = filePath,
+                    Url = $"/uploads/{uniqueFileName}", // Lưu đường dẫn web
+                    CreatedAt = DateTime.UtcNow,
+                    // FolderId = -1
+                };
+
+                _context.Files.Add(fileEntity);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    fileEntity.Id,
+                    fileEntity.Name,
+                    Url = $"{Request.Scheme}://{Request.Host}/uploads/{uniqueFileName}"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
+
+
+
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMenu(int id, [FromQuery] int? folderId)
         {

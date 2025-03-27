@@ -33,5 +33,10 @@ namespace TravelAPI.Models.Files{
         public IFormFile File { get; set; }
         public int? FolderId { get; set; }
     }
+    public class UploadFileDto2
+    {
+        [Required]
+        public IFormFile Upload { get; set; }
+    }
 
 }

@@ -43,14 +43,18 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddControllers();
 //them cai nay
 // Config CORS
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyHeader()
-               .AllowAnyMethod();
-    });
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000") // Thay đúng URL frontend
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials(); // Cho phép gửi cookie hoặc Authorization header
+        });
 });
 //cấu hình JSON Serialization
 builder.Services.AddControllers()
@@ -90,7 +94,8 @@ app.UseHttpsRedirection();
 
 app.MapControllers();
 
-app.UseCors();
+app.UseCors(MyAllowSpecificOrigins);
+
 
 app.UseAuthentication();
 
