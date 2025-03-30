@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TravelAPI.Data;
 
@@ -11,9 +12,11 @@ using TravelAPI.Data;
 namespace TravelAPI.Migrations
 {
     [DbContext(typeof(TravelDbContext))]
-    partial class TravelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250328034638_Post")]
+    partial class Post
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -402,15 +405,18 @@ namespace TravelAPI.Migrations
 
             modelBuilder.Entity("TravelAPI.Models.PostCategory", b =>
                 {
-                    b.Property<int>("PostId")
+                    b.Property<int>("PostID")
                         .HasColumnType("int");
 
-                    b.Property<int>("CategoryId")
+                    b.Property<int>("CategoryID")
                         .HasColumnType("int");
 
-                    b.HasKey("PostId", "CategoryId");
+                    b.Property<bool>("IsMainCategory")
+                        .HasColumnType("bit");
 
-                    b.HasIndex("CategoryId");
+                    b.HasKey("PostID", "CategoryID");
+
+                    b.HasIndex("CategoryID");
 
                     b.ToTable("PostCategory");
                 });
@@ -498,13 +504,13 @@ namespace TravelAPI.Migrations
                 {
                     b.HasOne("TravelAPI.Models.Category", "Category")
                         .WithMany()
-                        .HasForeignKey("CategoryId")
+                        .HasForeignKey("CategoryID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TravelAPI.Models.Post", "Post")
                         .WithMany("PostCategories")
-                        .HasForeignKey("PostId")
+                        .HasForeignKey("PostID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
