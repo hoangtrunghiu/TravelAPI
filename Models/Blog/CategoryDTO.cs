@@ -8,6 +8,7 @@ namespace TravelAPI.Models
         public string? Description { get; set; }
         public int? ParentCategoryId { get; set; }
         public string? ParentCategoryTitle { get; set; }
+        public bool IsDeleted { get; set; }
         public List<CategoryDTO> Children { get; set; } = new List<CategoryDTO>();
     }
 }

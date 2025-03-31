@@ -16,10 +16,11 @@ namespace TravelAPI.Models
         [Required, StringLength(255)]
         public string Slug { get; set; } = string.Empty;
         
-        
         public string? Description { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsDeleted { get; set; } = false; //trạng thái đã xóa
 
         // Self-referencing for parent-child categories
         public int? ParentCategoryId { get; set; }

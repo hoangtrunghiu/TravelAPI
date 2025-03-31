@@ -13,7 +13,7 @@ namespace TravelAPI.Controllers
 {
     [Route("api/category")]
     [ApiController]
-    [Authorize(Roles = "Administrator,Editor")]
+    // [Authorize(Roles = "Administrator,Editor")]
     public class CategoryController : ControllerBase
     {
         private readonly TravelDbContext _context;
@@ -35,7 +35,7 @@ namespace TravelAPI.Controllers
                     .Include(c => c.CategoryChildren) // Tải danh mục con cấp 2
                     .ThenInclude(c => c.CategoryChildren) // Tải danh mục con cấp 3
                     .Include(c => c.ParentCategory) // Lấy tên danh mục cha
-                    .Where(c => c.ParentCategoryId == null) // Lấy danh mục gốc
+                    .Where(c => c.ParentCategoryId == null && !c.IsDeleted) // Lấy danh mục gốc và chưa bị xóa
                     .OrderByDescending(c => c.Id)
                     .ToListAsync();
 
@@ -60,8 +60,8 @@ namespace TravelAPI.Controllers
                 }
 
                 var category = await _context.Categories
-                    .Include(c => c.CategoryChildren)
-                    .FirstOrDefaultAsync(c => c.Id == id);
+                   .Include(c => c.CategoryChildren.Where(child => !child.IsDeleted)) // Chỉ lấy danh mục con chưa bị xóa
+                   .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
                 if (category == null)
                 {
@@ -240,12 +240,163 @@ namespace TravelAPI.Controllers
 
                 var category = await _context.Categories
                     .Include(c => c.CategoryChildren)
-                    .FirstOrDefaultAsync(c => c.Id == id);
+                    .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
                 if (category == null)
                 {
                     _logger.LogWarning("Category with ID {Id} not found during delete operation", id);
                     return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
+                }
+
+                // Kiểm tra phụ thuộc với Post (MainCategory)
+                bool isMainCategory = await _context.Posts.AnyAsync(p => p.MainCategoryId == id);
+
+                // Kiểm tra phụ thuộc với PostCategory
+                bool hasPostCategories = await _context.PostCategories.AnyAsync(pc => pc.CategoryId == id);
+
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Xóa mềm danh mục
+                    category.IsDeleted = true;
+
+                    // Xử lý các danh mục con
+                    foreach (var child in category.CategoryChildren)
+                    {
+                        // Chuyển danh mục con lên cấp cao hơn
+                        child.ParentCategoryId = category.ParentCategoryId;
+                    }
+
+                    // Xử lý các Post có MainCategoryId là category này
+                    if (isMainCategory)
+                    {
+                        var relatedPosts = await _context.Posts
+                            .Where(p => p.MainCategoryId == id)
+                            .ToListAsync();
+
+                        foreach (var post in relatedPosts)
+                        {
+                            // Xóa liên kết MainCategory
+                            post.MainCategoryId = null;
+                        }
+                    }
+
+                    // Xử lý các PostCategory liên quan
+                    if (hasPostCategories)
+                    {
+                        var postCategories = await _context.PostCategories
+                            .Where(pc => pc.CategoryId == id)
+                            .ToListAsync();
+
+                        // Xóa các liên kết PostCategory
+                        _context.PostCategories.RemoveRange(postCategories);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Category soft deleted: {Title} (ID: {Id})", category.Title, category.Id);
+                    return NoContent();
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Transaction failed during category deletion");
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting category with ID {Id}", id);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa danh mục" });
+            }
+        }
+
+        // Thêm endpoint mới để khôi phục danh mục đã xóa mềm
+        [HttpPost("{id}/restore")]
+        public async Task<IActionResult> RestoreCategory(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new { message = "ID không hợp lệ" });
+                }
+
+                var category = await _context.Categories
+                    .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted);
+
+                if (category == null)
+                {
+                    _logger.LogWarning("Deleted category with ID {Id} not found during restore operation", id);
+                    return NotFound(new { message = $"Không tìm thấy danh mục đã xóa với ID: {id}" });
+                }
+
+                // Khôi phục danh mục
+                category.IsDeleted = false;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Category restored: {Title} (ID: {Id})", category.Title, category.Id);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while restoring category with ID {Id}", id);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi khôi phục danh mục" });
+            }
+        }
+
+        // GET: api/category/deleted
+        [HttpGet("deleted")]
+        public async Task<ActionResult<IEnumerable<CategoryDTO>>> GetDeletedCategories()
+        {
+            try
+            {
+                var deletedCategories = await _context.Categories
+                    .Where(c => c.IsDeleted)
+                    .ToListAsync();
+
+                return Ok(deletedCategories.Select(MapToDTO).ToList());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting deleted categories");
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy danh sách danh mục đã xóa" });
+            }
+        }
+
+        // endpoint để xóa vĩnh viễn danh mục
+        [HttpDelete("{id}/permanent")]
+        [Authorize(Roles = "Administrator")] // Chỉ admin mới có quyền xóa vĩnh viễn
+        public async Task<IActionResult> PermanentDeleteCategory(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new { message = "ID không hợp lệ" });
+                }
+
+                var category = await _context.Categories
+                    .Include(c => c.CategoryChildren)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+
+                if (category == null)
+                {
+                    _logger.LogWarning("Category with ID {Id} not found during permanent delete operation", id);
+                    return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
+                }
+
+                // Kiểm tra phụ thuộc với Post (MainCategory)
+                bool isMainCategory = await _context.Posts.AnyAsync(p => p.MainCategoryId == id);
+
+                // Kiểm tra phụ thuộc với PostCategory
+                bool hasPostCategories = await _context.PostCategories.AnyAsync(pc => pc.CategoryId == id);
+
+                if (isMainCategory || hasPostCategories)
+                {
+                    return BadRequest(new { message = "Không thể xóa vĩnh viễn danh mục này vì vẫn còn liên kết với các bài viết" });
                 }
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
@@ -261,7 +412,7 @@ namespace TravelAPI.Controllers
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    _logger.LogInformation("Category deleted: {Title} (ID: {Id})", category.Title, category.Id);
+                    _logger.LogInformation("Category permanently deleted: {Title} (ID: {Id})", category.Title, category.Id);
                     return NoContent();
                 }
                 catch
@@ -272,8 +423,8 @@ namespace TravelAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while deleting category with ID {Id}", id);
-                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa danh mục" });
+                _logger.LogError(ex, "Error occurred while permanently deleting category with ID {Id}", id);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa vĩnh viễn danh mục" });
             }
         }
 
@@ -372,7 +523,11 @@ namespace TravelAPI.Controllers
                 Description = category.Description,
                 ParentCategoryId = category.ParentCategoryId,
                 ParentCategoryTitle = category.ParentCategory?.Title,
-                Children = category.CategoryChildren?.Select(MapToDTO).ToList() ?? new List<CategoryDTO>()
+                IsDeleted = category.IsDeleted,
+                Children = category.CategoryChildren?
+                    .Where(c => !c.IsDeleted)
+                    .Select(MapToDTO)
+                    .ToList() ?? new List<CategoryDTO>()
             };
         }
     }
