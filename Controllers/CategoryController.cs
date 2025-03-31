@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 
-namespace App.Api.Controllers
+namespace TravelAPI.Controllers
 {
     [Route("api/category")]
     [ApiController]
-    // [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Administrator,Editor")]
     public class CategoryController : ControllerBase
     {
         private readonly TravelDbContext _context;
