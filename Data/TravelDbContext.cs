@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TravelAPI.Models;
 using TravelAPI.Models.Files;
+using TravelAPI.Models.Tour;
 
 namespace TravelAPI.Data
 {
@@ -50,13 +51,21 @@ namespace TravelAPI.Data
                 entity.HasIndex(p => p.Slug)
                       .IsUnique(); //thiet lap chi muc nay la duy nhat, khong duoc phep co 2 bai post co slug giong nhau
             });
+
+            builder.Entity<CategoryTour>(entity =>
+            {
+                entity.HasIndex(p => p.Url)
+                      .IsUnique();
+            });
         }
         public DbSet<Menu> Menus { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<PostCategory> PostCategories { get; set; }
 
         public DbSet<FileEntity> Files { get; set; }
         public DbSet<Folder> Folders { get; set; }
         public DbSet<Post> Posts { get; set; }
-        public DbSet<PostCategory> PostCategories { get; set; }
+
+        public DbSet<CategoryTour> CategoryTours { get;set;}
     }
 }
