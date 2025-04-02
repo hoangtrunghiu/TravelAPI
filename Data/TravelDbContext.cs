@@ -67,5 +67,8 @@ namespace TravelAPI.Data
         public DbSet<Post> Posts { get; set; }
 
         public DbSet<CategoryTour> CategoryTours { get;set;}
+
+
+        public DbSet<LibraryImage> LibraryImages { get; set;}
     }
 }
