@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TravelAPI.Data;
 
@@ -11,9 +12,11 @@ using TravelAPI.Data;
 namespace TravelAPI.Migrations
 {
     [DbContext(typeof(TravelDbContext))]
-    partial class TravelDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250410064937_AddDeparturePoint-Destination")]
+    partial class AddDeparturePointDestination
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -566,161 +569,6 @@ namespace TravelAPI.Migrations
                     b.ToTable("Destinations");
                 });
 
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourCategoryMapping", b =>
-                {
-                    b.Property<int>("TourDetailId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CategoryTourId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TourDetailId", "CategoryTourId");
-
-                    b.HasIndex("CategoryTourId");
-
-                    b.ToTable("TourCategoryMapping");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TourDetailId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TourDetailId");
-
-                    b.ToTable("TourDates");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDeparture", b =>
-                {
-                    b.Property<int>("DeparturePointId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TourDetailId")
-                        .HasColumnType("int");
-
-                    b.HasKey("DeparturePointId", "TourDetailId");
-
-                    b.HasIndex("TourDetailId");
-
-                    b.ToTable("TourDepartures");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDestination", b =>
-                {
-                    b.Property<int>("DestinationId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TourDetailId")
-                        .HasColumnType("int");
-
-                    b.HasKey("DestinationId", "TourDetailId");
-
-                    b.HasIndex("TourDetailId");
-
-                    b.ToTable("TourDestinations");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDetail", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Avatar")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CodeTour")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<int>("CountryFrom")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("CountryTo")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreateAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Creater")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Flight")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("Hotel")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<bool>("IsDelete")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsHide")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsHot")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("MainCategoryTourId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("NameTour")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal?>("OriginalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Promotion")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PromotionallPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Timeline")
-                        .HasMaxLength(160)
-                        .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MainCategoryTourId");
-
-                    b.HasIndex("Url")
-                        .IsUnique();
-
-                    b.ToTable("TourDetails");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -837,83 +685,6 @@ namespace TravelAPI.Migrations
                     b.Navigation("ParentDestination");
                 });
 
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourCategoryMapping", b =>
-                {
-                    b.HasOne("TravelAPI.Models.Tour.CategoryTour", "CategoryTour")
-                        .WithMany()
-                        .HasForeignKey("CategoryTourId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TravelAPI.Models.Tour.TourDetail", "TourDetail")
-                        .WithMany("TourCategoryMappings")
-                        .HasForeignKey("TourDetailId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CategoryTour");
-
-                    b.Navigation("TourDetail");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDate", b =>
-                {
-                    b.HasOne("TravelAPI.Models.Tour.TourDetail", "TourDetail")
-                        .WithMany("TourDates")
-                        .HasForeignKey("TourDetailId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TourDetail");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDeparture", b =>
-                {
-                    b.HasOne("TravelAPI.Models.Tour.DeparturePoint", "DeparturePoint")
-                        .WithMany()
-                        .HasForeignKey("DeparturePointId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TravelAPI.Models.Tour.TourDetail", "TourDetail")
-                        .WithMany("TourDepartures")
-                        .HasForeignKey("TourDetailId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DeparturePoint");
-
-                    b.Navigation("TourDetail");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDestination", b =>
-                {
-                    b.HasOne("TravelAPI.Models.Tour.Destination", "Destination")
-                        .WithMany()
-                        .HasForeignKey("DestinationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TravelAPI.Models.Tour.TourDetail", "TourDetail")
-                        .WithMany("TourDestinations")
-                        .HasForeignKey("TourDetailId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Destination");
-
-                    b.Navigation("TourDetail");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDetail", b =>
-                {
-                    b.HasOne("TravelAPI.Models.Tour.CategoryTour", "MainCategoryTour")
-                        .WithMany()
-                        .HasForeignKey("MainCategoryTourId");
-
-                    b.Navigation("MainCategoryTour");
-                });
-
             modelBuilder.Entity("TravelAPI.Models.Category", b =>
                 {
                     b.Navigation("CategoryChildren");
@@ -937,17 +708,6 @@ namespace TravelAPI.Migrations
             modelBuilder.Entity("TravelAPI.Models.Tour.Destination", b =>
                 {
                     b.Navigation("DestinationChildren");
-                });
-
-            modelBuilder.Entity("TravelAPI.Models.Tour.TourDetail", b =>
-                {
-                    b.Navigation("TourCategoryMappings");
-
-                    b.Navigation("TourDates");
-
-                    b.Navigation("TourDepartures");
-
-                    b.Navigation("TourDestinations");
                 });
 #pragma warning restore 612, 618
         }

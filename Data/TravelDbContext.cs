@@ -51,24 +51,53 @@ namespace TravelAPI.Data
                 entity.HasIndex(p => p.Slug)
                       .IsUnique(); //thiet lap chi muc nay la duy nhat, khong duoc phep co 2 bai post co slug giong nhau
             });
-
+            // Đánh chỉ mục INDEX cột Url bảng CategoryTour trong db => tìm kiếm nhanh hơn
             builder.Entity<CategoryTour>(entity =>
             {
                 entity.HasIndex(p => p.Url)
                       .IsUnique();
             });
+            // Đánh chỉ mục INDEX cột Url bảng TourDetail trong db => tìm kiếm nhanh hơn
+            builder.Entity<TourDetail>(entity =>
+            {
+                entity.HasIndex(p => p.Url)
+                      .IsUnique();
+            });
+            //Tạo khóa chính cho bảng TourCategoryMapping
+            builder.Entity<TourCategoryMapping>(entity =>
+            {
+                entity.HasKey(t => new { t.TourDetailId, t.CategoryTourId });
+            });
+            //Tạo khóa chính cho bảng TourDestination
+            builder.Entity<TourDestination>(entity =>
+            {
+                entity.HasKey(t => new { t.DestinationId, t.TourDetailId });
+            });
+            //Tạo khóa chính cho bảng TourDeparture
+            builder.Entity<TourDeparture>(entity =>
+            {
+                entity.HasKey(t => new { t.DeparturePointId, t.TourDetailId });
+            });
         }
         public DbSet<Menu> Menus { get; set; }
+
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Post> Posts { get; set; }
         public DbSet<PostCategory> PostCategories { get; set; }
 
         public DbSet<FileEntity> Files { get; set; }
         public DbSet<Folder> Folders { get; set; }
-        public DbSet<Post> Posts { get; set; }
 
-        public DbSet<CategoryTour> CategoryTours { get;set;}
+        public DbSet<CategoryTour> CategoryTours { get; set; }
+        public DbSet<TourDetail> TourDetails { get; set; }
+        public DbSet<TourCategoryMapping> TourCategoryMappings { get; set; }
+        public DbSet<TourDate> TourDates { get; set; }
+        public DbSet<DeparturePoint> DeparturePoints { get; set; }
+        public DbSet<TourDeparture> TourDepartures { get; set; }
+        public DbSet<Destination> Destinations { get; set; }
+        public DbSet<TourDestination> TourDestinations { get; set; }
 
 
-        public DbSet<LibraryImage> LibraryImages { get; set;}
+        public DbSet<LibraryImage> LibraryImages { get; set; }
     }
 }

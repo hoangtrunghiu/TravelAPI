@@ -250,91 +250,91 @@ namespace TravelAPI.Controllers.Tour
         }
 
         // DELETE: api/category/{id}
-        // [HttpDelete("{id}")]
-        // public async Task<IActionResult> DeleteCategoryTour(int id)
-        // {
-        //     try
-        //     {
-        //         if (id <= 0)
-        //         {
-        //             return BadRequest(new { message = "ID không hợp lệ" });
-        //         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategoryTour(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new { message = "ID không hợp lệ" });
+                }
 
-        //         var category = await _context.CategoryTours
-        //             .Include(c => c.CategoryTourChildren)
-        //             .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+                var category = await _context.CategoryTours
+                    .Include(c => c.CategoryTourChildren)
+                    .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
-        //         if (category == null)
-        //         {
-        //             _logger.LogWarning("Category with ID {Id} not found during delete operation", id);
-        //             return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
-        //         }
+                if (category == null)
+                {
+                    _logger.LogWarning("Category with ID {Id} not found during delete operation", id);
+                    return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
+                }
 
-        //         // Kiểm tra phụ thuộc với TourDetail (MainCategoryTour)
-        //         bool isMainCategory = await _context.TourDetails.AnyAsync(td => td.MainCategoryTourId == id);
+                // Kiểm tra phụ thuộc với TourDetail (MainCategoryTour)
+                bool isMainCategory = await _context.TourDetails.AnyAsync(td => td.MainCategoryTourId == id);
 
-        //         // Kiểm tra phụ thuộc với TourCategoryMapping
-        //         bool hasTourCategoryMapping = await _context.TourCategoryMapping.AnyAsync(tc => tc.CategoryTourId == id);
+                // Kiểm tra phụ thuộc với TourCategoryMapping
+                bool hasTourCategoryMapping = await _context.TourCategoryMappings.AnyAsync(tc => tc.CategoryTourId == id);
 
-        //         //Kiểm tra sự phụ thuộc với Image - sẽ thêm sau
+                //Kiểm tra sự phụ thuộc với Image - sẽ thêm sau
 
-        //         using var transaction = await _context.Database.BeginTransactionAsync();
-        //         try
-        //         {
-        //             // Xóa mềm danh mục
-        //             category.IsDeleted = true;
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Xóa mềm danh mục
+                    category.IsDeleted = true;
 
-        //             // Xử lý các danh mục con
-        //             foreach (var child in category.CategoryTourChildren)
-        //             {
-        //                 // Chuyển danh mục con lên cấp cao hơn
-        //                 child.ParentCategoryTourId = category.ParentCategoryTourId;
-        //             }
+                    // Xử lý các danh mục con
+                    foreach (var child in category.CategoryTourChildren)
+                    {
+                        // Chuyển danh mục con lên cấp cao hơn
+                        child.ParentCategoryTourId = category.ParentCategoryTourId;
+                    }
 
-        //             // Xử lý các TourDetail có MainCategoryTourId là category này
-        //             if (isMainCategory)
-        //             {
-        //                 var relatedTourDetails = await _context.TourDetails
-        //                     .Where(td => td.MainCategoryTourId == id)
-        //                     .ToListAsync();
+                    // Xử lý các TourDetail có MainCategoryTourId là category này
+                    if (isMainCategory)
+                    {
+                        var relatedTourDetails = await _context.TourDetails
+                            .Where(td => td.MainCategoryTourId == id)
+                            .ToListAsync();
 
-        //                 foreach (var tourDetail in relatedTourDetails)
-        //                 {
-        //                     // Xóa liên kết MainCategory
-        //                     tourDetail.MainCategoryTourId = null;
-        //                 }
-        //             }
+                        foreach (var tourDetail in relatedTourDetails)
+                        {
+                            // Xóa liên kết MainCategory
+                            tourDetail.MainCategoryTourId = null;
+                        }
+                    }
 
-        //             // Xử lý các TourCategoryMapping liên quan
-        //             if (hasTourCategoryMapping)
-        //             {
-        //                 var tourCategoryMapping = await _context.TourCategoryMapping
-        //                     .Where(tc => tc.CategoryTourId == id)
-        //                     .ToListAsync();
+                    // Xử lý các TourCategoryMapping liên quan
+                    if (hasTourCategoryMapping)
+                    {
+                        var tourCategoryMapping = await _context.TourCategoryMappings
+                            .Where(tc => tc.CategoryTourId == id)
+                            .ToListAsync();
 
-        //                 // Xóa các liên kết TourCategoryMapping
-        //                 _context.TourCategoryMapping.RemoveRange(tourCategoryMapping);
-        //             }
+                        // Xóa các liên kết TourCategoryMapping
+                        _context.TourCategoryMappings.RemoveRange(tourCategoryMapping);
+                    }
 
-        //             await _context.SaveChangesAsync();
-        //             await transaction.CommitAsync();
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
 
-        //             _logger.LogInformation("Category soft deleted: {Title} (ID: {Id})", category.CategoryName, category.Id);
-        //             return NoContent();
-        //         }
-        //         catch (Exception ex)
-        //         {
-        //             await transaction.RollbackAsync();
-        //             _logger.LogError(ex, "Transaction failed during category deletion");
-        //             throw;
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError(ex, "Error occurred while deleting category with ID {Id}", id);
-        //         return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa danh mục" });
-        //     }
-        // }
+                    _logger.LogInformation("Category soft deleted: {Title} (ID: {Id})", category.CategoryName, category.Id);
+                    return NoContent();
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Transaction failed during category deletion");
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting category with ID {Id}", id);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa danh mục" });
+            }
+        }
 
 
         // Thêm endpoint mới để khôi phục danh mục đã xóa mềm
@@ -392,66 +392,66 @@ namespace TravelAPI.Controllers.Tour
         }
 
         // endpoint để xóa vĩnh viễn danh mục
-        // [HttpDelete("{id}/permanent")]
-        // [Authorize(Roles = "Administrator")] // Chỉ admin mới có quyền xóa vĩnh viễn
-        // public async Task<IActionResult> PermanentDeleteCategory(int id)
-        // {
-        //     try
-        //     {
-        //         if (id <= 0)
-        //         {
-        //             return BadRequest(new { message = "ID không hợp lệ" });
-        //         }
+        [HttpDelete("{id}/permanent")]
+        [Authorize(Roles = "Administrator")] // Chỉ admin mới có quyền xóa vĩnh viễn
+        public async Task<IActionResult> PermanentDeleteCategory(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    return BadRequest(new { message = "ID không hợp lệ" });
+                }
 
-        //         var category = await _context.CategoryTours
-        //             .Include(c => c.CategoryTourChildren)
-        //             .FirstOrDefaultAsync(c => c.Id == id);
+                var category = await _context.CategoryTours
+                    .Include(c => c.CategoryTourChildren)
+                    .FirstOrDefaultAsync(c => c.Id == id);
 
-        //         if (category == null)
-        //         {
-        //             _logger.LogWarning("Category tour with ID {Id} not found during permanent delete operation", id);
-        //             return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
-        //         }
+                if (category == null)
+                {
+                    _logger.LogWarning("Category tour with ID {Id} not found during permanent delete operation", id);
+                    return NotFound(new { message = $"Không tìm thấy danh mục với ID: {id}" });
+                }
 
-        //         // Kiểm tra phụ thuộc với Post (MainCategory)
-        //         bool isMainCategory = await _context.TourDetails.AnyAsync(p => p.MainCategoryId == id);
+                // Kiểm tra phụ thuộc với TourDetail (MainCategoryTour)
+                bool isMainCategory = await _context.TourDetails.AnyAsync(td => td.MainCategoryTourId == id);
 
-        //         // Kiểm tra phụ thuộc với PostCategory
-        //         bool hasTourCategoryMapping = await _context.TourCategoryMapping.AnyAsync(pc => pc.CategoryTourId == id);
+                // Kiểm tra phụ thuộc với TourCategoryMapping
+                bool hasTourCategoryMapping = await _context.TourCategoryMappings.AnyAsync(pc => pc.CategoryTourId == id);
 
-        //         if (isMainCategory || hasTourCategoryMapping)
-        //         {
-        //             return BadRequest(new { message = "Không thể xóa vĩnh viễn danh mục này vì vẫn còn liên kết với các bài viết" });
-        //         }
+                if (isMainCategory || hasTourCategoryMapping)
+                {
+                    return BadRequest(new { message = "Không thể xóa vĩnh viễn danh mục này vì vẫn còn liên kết với các bài viết" });
+                }
 
-        //         using var transaction = await _context.Database.BeginTransactionAsync();
-        //         try
-        //         {
-        //             // Di chuyển các danh mục con lên cấp cao hơn
-        //             foreach (var child in category.CategoryTourChildren)
-        //             {
-        //                 child.ParentCategoryTourId = category.ParentCategoryTourId;
-        //             }
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Di chuyển các danh mục con lên cấp cao hơn
+                    foreach (var child in category.CategoryTourChildren)
+                    {
+                        child.ParentCategoryTourId = category.ParentCategoryTourId;
+                    }
 
-        //             _context.CategoryTours.Remove(category);
-        //             await _context.SaveChangesAsync();
-        //             await transaction.CommitAsync();
+                    _context.CategoryTours.Remove(category);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
 
-        //             _logger.LogInformation("Category permanently deleted: {Title} (ID: {Id})", category.CategoryName, category.Id);
-        //             return NoContent();
-        //         }
-        //         catch
-        //         {
-        //             await transaction.RollbackAsync();
-        //             throw;
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError(ex, "Error occurred while permanently deleting category with ID {Id}", id);
-        //         return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa vĩnh viễn danh mục" });
-        //     }
-        // }
+                    _logger.LogInformation("Category permanently deleted: {Title} (ID: {Id})", category.CategoryName, category.Id);
+                    return NoContent();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while permanently deleting category with ID {Id}", id);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi xóa vĩnh viễn danh mục" });
+            }
+        }
 
         // GET: api/category/{id}/breadcrumb
         [HttpGet("{id}/breadcrumb")]
