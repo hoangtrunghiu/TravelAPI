@@ -77,6 +77,30 @@ namespace TravelAPI.Controllers.Tour
                 return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin danh mục tour" });
             }
         }
+        // GET: api/category/{id}
+        [HttpGet("by-url/{url}")]
+        public async Task<ActionResult<CategoryTourDTO>> GetCategoryTourByUrl(string url)
+        {
+            try
+            {
+                var category = await _context.CategoryTours
+                   .Where(x => x.Url == url && !x.IsDeleted)
+                   .FirstOrDefaultAsync();
+
+                if (category == null)
+                {
+                    _logger.LogWarning("Category with url {Url} not found", url);
+                    return NotFound(new { message = $"Không tìm thấy danh mục tour với url: {url}" });
+                }
+
+                return Ok(MapToDTO(category));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting category with Url {Url}", url);
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lấy thông tin danh mục tour" });
+            }
+        }
 
         // POST: api/category
         [HttpPost]

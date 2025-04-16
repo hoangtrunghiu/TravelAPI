@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: HiuNet
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "Hiu123456"
+      ACCEPT_EULA: "Y"
+    volumes:
+      - ./sql-data:/var/opt/mssql  # Mount thư mục local
+    restart: unless-stopped

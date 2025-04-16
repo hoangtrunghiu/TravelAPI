@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace TravelAPI.Controllers
 {
@@ -499,6 +500,248 @@ namespace TravelAPI.Controllers
                 return StatusCode(500, new { message = "Đã xảy ra lỗi khi chuyển trạng thái ẩn/hiện" });
             }
         }
+
+        //9. Lấy tour lọc theo danh mục...
+        [HttpGet("filter/{categoryUrl}")]
+        public async Task<ActionResult<IEnumerable<TourDetailDTO>>> FilterTours(
+            string categoryUrl,
+            [FromQuery] string? departure = null,
+            [FromQuery] string? destination = null,
+            [FromQuery] string? duration = null,
+            [FromQuery] string? month = null,
+            [FromQuery] string? transport = null,
+            [FromQuery] string? sort = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 12)
+        {
+            try
+            {
+                // Tìm danh mục theo URL
+                var category = await _context.CategoryTours
+                    .FirstOrDefaultAsync(c => c.Url == categoryUrl && !c.IsDeleted);
+                if (category == null)
+                {
+                    _logger.LogWarning("Category with CategoryUrl {CategoryUrl} not found", categoryUrl);
+                    return NotFound(new { message = $"Không tìm thấy danh mục tour với CategoryUrl: {categoryUrl}" });
+                }
+                // Lấy tất cả ID của danh mục hiện tại và các danh mục con
+                var categoryIds = await _context.CategoryTours
+                    .Where(c => c.Id == category.Id || c.ParentCategoryTourId == category.Id)
+                    .Select(c => c.Id)
+                    .ToListAsync();
+                // Xây dựng truy vấn cơ bản
+                var query = _context.TourDetails
+                        .Include(t => t.MainCategoryTour)
+                        .Include(t => t.TourCategoryMappings)
+                            .ThenInclude(tcm => tcm.CategoryTour)
+                        .Include(t => t.TourDepartures)
+                            .ThenInclude(td => td.DeparturePoint)
+                        .Include(t => t.TourDestinations)
+                            .ThenInclude(td => td.Destination)
+                        .Include(t => t.TourDates)
+                        .Where(t => !t.IsDelete && !t.IsHide)
+                        .AsQueryable();
+
+                // Lọc tour theo danh mục chính hoặc danh mục liên quan
+                query = query.Where(t =>
+                    (t.MainCategoryTourId != null && categoryIds.Contains(t.MainCategoryTourId.Value)) ||
+                    t.TourCategoryMappings.Any(tcm => categoryIds.Contains(tcm.CategoryTourId)));
+
+                // Lọc theo điểm khởi hành
+                if (!string.IsNullOrEmpty(departure))
+                {
+                    var departurePoints = departure.Split(',').Select(d => d.Trim().ToLower()).ToList();
+                    query = query.Where(t => t.TourDepartures.Any(td =>
+                        departurePoints.Contains(td.DeparturePoint.Name.ToLower())));
+                }
+
+                // // Lọc theo điểm đến
+                if (!string.IsNullOrEmpty(destination))
+                {
+                    var destinations = destination.Split(',').Select(d => d.Trim().ToLower()).ToList();
+                    query = query.Where(t => t.TourDestinations.Any(td =>
+                        destinations.Contains(td.Destination.Name.ToLower())));
+                }
+
+                // Lọc theo thời gian (duration)
+                if (!string.IsNullOrEmpty(duration))
+                {
+                    // Chỉ xử lý với tours có Timeline
+                    var toursWithTimeline = await query.Where(t => t.Timeline != null).ToListAsync();
+
+                    // Danh sách ID của các tour thỏa mãn điều kiện duration
+                    List<int> filteredTourIds;
+
+                    switch (duration.ToLower())
+                    {
+                        case "under10":
+                            filteredTourIds = toursWithTimeline
+                                .Where(t => t.Timeline.ToLower().Contains("ngày") &&
+                                    int.TryParse(t.Timeline.Split(' ')[0], out int days1) &&
+                                    days1 < 10)
+                                .Select(t => t.Id)
+                                .ToList();
+                            break;
+                        case "over10":
+                            filteredTourIds = toursWithTimeline
+                                .Where(t => t.Timeline.ToLower().Contains("ngày") &&
+                                    int.TryParse(t.Timeline.Split(' ')[0], out int days2) &&
+                                    days2 >= 10)
+                                .Select(t => t.Id)
+                                .ToList();
+                            break;
+                        case "under7":
+                            filteredTourIds = toursWithTimeline
+                                .Where(t => t.Timeline.ToLower().Contains("ngày") &&
+                                    int.TryParse(t.Timeline.Split(' ')[0], out int days3) &&
+                                    days3 < 7)
+                                .Select(t => t.Id)
+                                .ToList();
+                            break;
+                        default:
+                            filteredTourIds = toursWithTimeline.Select(t => t.Id).ToList();
+                            break;
+                    }
+                    // Áp dụng lọc theo ID vào query gốc
+                    query = query.Where(t => filteredTourIds.Contains(t.Id));
+                }
+
+                // Lọc theo tháng khởi hành
+                if (!string.IsNullOrEmpty(month))
+                {
+                    // Định dạng month là "MM-YYYY"
+                    if (DateTime.TryParseExact(month, "MM-yyyy", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out DateTime targetDate))
+                    {
+                        var startOfMonth = new DateTime(targetDate.Year, targetDate.Month, 1);
+                        var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+                        query = query.Where(t => t.TourDates.Any(td =>
+                            td.StartDate >= startOfMonth && td.StartDate <= endOfMonth));
+                    }
+                }
+
+                // Lọc theo phương tiện vận chuyển
+                if (!string.IsNullOrEmpty(transport))
+                {
+                    if (transport.Equals("plane", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = query.Where(t => t.Flight != null && t.Flight.ToLower().Contains("hàng không"));
+                    }
+                    else if (transport.Equals("car", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = query.Where(t => t.Flight != null && t.Flight.ToLower().Contains("ô tô"));
+                    }
+                }
+
+                // Lọc theo khoảng giá
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(t =>
+                        (t.PromotionallPrice.HasValue && t.PromotionallPrice >= minPrice) ||
+                        (!t.PromotionallPrice.HasValue && t.OriginalPrice.HasValue && t.OriginalPrice >= minPrice));
+                }
+
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(t =>
+                        (t.PromotionallPrice.HasValue && t.PromotionallPrice <= maxPrice) ||
+                        (!t.PromotionallPrice.HasValue && t.OriginalPrice.HasValue && t.OriginalPrice <= maxPrice));
+                }
+
+                // Sắp xếp kết quả
+                if (!string.IsNullOrEmpty(sort))
+                {
+                    switch (sort.ToLower())
+                    {
+                        case "price-asc":
+                            query = query.OrderBy(t => t.PromotionallPrice);
+                            break;
+                        case "price-desc":
+                            query = query.OrderByDescending(t => t.PromotionallPrice);
+                            break;
+                        case "date-asc":
+                            query = query.OrderBy(t => t.TourDates.Min(td => td.StartDate));
+                            break;
+                        case "date-desc":
+                            query = query.OrderByDescending(t => t.TourDates.Min(td => td.StartDate));
+                            break;
+                        default:
+                            query = query.OrderByDescending(t => t.CreateAt);
+                            break;
+                    }
+                }
+                else
+                {
+                    // Mặc định sắp xếp theo ngày tạo mới nhất
+                    query = query.OrderByDescending(t => t.CreateAt);
+                }
+
+                // Đếm tổng số tour thỏa mãn điều kiện lọc
+                var totalTours = await query.CountAsync();
+
+                // Phân trang
+                var tours = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(t => new TourDetailDTO
+                    {
+                        Id = t.Id,
+                        NameTour = t.NameTour,
+                        OriginalPrice = t.OriginalPrice,
+                        PromotionallPrice = t.PromotionallPrice,
+                        Timeline = t.Timeline,
+                        Url = t.Url,
+                        Flight = t.Flight,
+                        Avatar = t.Avatar,
+                        IsHot = t.IsHot,
+                        MainCategoryTourId = t.MainCategoryTourId,
+                        MainCategoryTourName = t.MainCategoryTour != null ? t.MainCategoryTour.CategoryName : null,
+                        RelatedCategories = t.TourCategoryMappings
+                            .Select(tcm => new ChildTourDTO
+                            {
+                                Id = tcm.CategoryTourId,
+                                Name = tcm.CategoryTour.CategoryName
+                            }).ToList(),
+                        RelatedDestinations = t.TourDestinations
+                            .Select(td => new ChildTourDTO
+                            {
+                                Id = td.DestinationId,
+                                Name = td.Destination.Name
+                            }).ToList(),
+                        RelatedDeparturePoints = t.TourDepartures
+                            .Select(td => new ChildTourDTO
+                            {
+                                Id = td.DeparturePointId,
+                                Name = td.DeparturePoint.Name
+                            }).ToList(),
+                        RelatedTourDates = t.TourDates
+                            .Select(td => new TourDateDTO
+                            {
+                                Id = td.Id,
+                                StartDate = td.StartDate
+                            }).ToList()
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    items = tours,
+                    totalCount = totalTours,
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalPages = (int)Math.Ceiling((double)totalTours / pageSize)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi xảy ra khi lọc danh sách tour");
+                return StatusCode(500, new { message = "Đã xảy ra lỗi khi lọc danh sách tour", error = ex.Message });
+            }
+        }
+
 
         // Hàm chuyển đổi TourDetail sang TourDetailDTO
         private TourDetailDTO MapToTourDetailDTO(TourDetail tour)
